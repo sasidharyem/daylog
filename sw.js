@@ -26,6 +26,10 @@ self.addEventListener('push',e=>e.waitUntil((async()=>{
   ((d&&d.snooze)||[]).forEach(z=>{if(z.k!==k||!hit(nm,mm(z.at)))return;const t=all.find(x=>x.id===z.id);if(t&&!t.st){out.push(['Snoozed: '+t.text,start(t),true]);z.fired=true;}});
   all.forEach(t=>{if(!t.st&&t.from&&hit(nm,mm(t.from)-(t.lead||0)))out.push([mm(t.from)>nm?t.text+' starts at '+fmt(t.from):t.text+(t.to?' until '+fmt(t.to):''),start(t)]);});
   if(d&&d.over)all.forEach(t=>{if(!t.st&&t.to&&nm>=mm(t.to)&&nm<=mm(t.to)+4)out.push([t.text+' should be finished',{body:'It was planned to end at '+fmt(t.to)+'. Mark it done, or snooze.',tag:'daylog-over-'+k+'-'+t.id,vibrate:SHORT,actions:ACTS,data:{k:k,id:t.id}}]);});
+  ((d&&d.habits)||[]).forEach(hb=>{
+    const cnt=(d.hdone&&d.hdone[k]&&d.hdone[k][hb.id])||0;
+    if(hb.at&&cnt<hb.goal&&hit(nm,mm(hb.at)))out.push([hb.name,{body:hb.goal>1?cnt+' of '+hb.goal+' so far today':'Habit reminder',tag:'daylog-h-'+k+'-'+hb.id,vibrate:RING,requireInteraction:true,actions:[{action:'done',title:hb.goal>1?'Add one':'Done'}],data:{k:k,id:hb.id,h:true}}]);
+  });
   if(d&&d.wrap&&all.length&&hit(nm,mm(d.wrap))){
     const cnt=all.filter(t=>t.st!=='s'),dn=cnt.filter(t=>t.st==='d').length,left=all.filter(t=>!t.st);
     out.push(['Today: '+dn+' of '+cnt.length+' done'+(cnt.length?' ('+Math.round(dn/cnt.length*100)+'%)':''),{body:left.length?'Not marked: '+left.slice(0,6).map(t=>t.text).join(', ')+(left.length>6?' and '+(left.length-6)+' more':''):'Everything is marked. Nice work.',tag:'daylog-wrap-'+k,vibrate:SHORT}]);
@@ -38,6 +42,11 @@ self.addEventListener('push',e=>e.waitUntil((async()=>{
 })()));
 self.addEventListener('notificationclick',e=>{
   const a=e.action,dt=e.notification.data;e.notification.close();
+  if(a==='done'&&dt&&dt.h)return e.waitUntil((async()=>{
+    const d=await readJ('reminders.json');
+    if(d){d.hdone=d.hdone||{};d.hdone[dt.k]=d.hdone[dt.k]||{};d.hdone[dt.k][dt.id]=(d.hdone[dt.k][dt.id]||0)+1;await writeJ('reminders.json',d);}
+    const q=(await readJ('actions.json'))||[];q.push({type:'habit',k:dt.k,id:dt.id,at:Date.now()});await writeJ('actions.json',q);
+  })());
   if(a==='done'&&dt)return e.waitUntil((async()=>{
     const d=await readJ('reminders.json');
     if(d&&d.days&&d.days[dt.k]){const t=d.days[dt.k].find(x=>x.id===dt.id);if(t)t.st='d';await writeJ('reminders.json',d);}
