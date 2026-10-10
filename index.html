@@ -171,13 +171,111 @@ textarea{resize:vertical;min-height:84px}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:baseline}
 .wd{display:flex;align-items:flex-end;gap:6px;height:112px;border-bottom:1px solid var(--line)}
 .badge{display:inline-block;font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--done);color:var(--surface);font-variant-numeric:tabular-nums}
+
+/* ===== Visual refresh: soft layered surfaces, a day timeline, a floating tab bar ===== */
+:root{--shadow:0 1px 2px rgba(22,33,44,.05),0 6px 18px rgba(22,33,44,.07);--bg2:#DDE8F1;--soft:#FFF4D2;--soft-ink:#5A4200;--r:18px}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--shadow:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.28);--bg2:#16212B;--soft:#322807;--soft-ink:#F6D98A} }
+:root[data-theme="dark"]{--shadow:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.28);--bg2:#16212B;--soft:#322807;--soft-ink:#F6D98A}
+body{background:var(--bg);background-image:linear-gradient(180deg,var(--bg2),var(--bg) 260px);background-repeat:no-repeat;-webkit-tap-highlight-color:transparent}
+.app{gap:18px;padding-block:18px 124px}
+.ico{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+/* header */
+.head{grid-template-columns:auto minmax(0,1fr) auto;gap:2px 12px}
+.ring{grid-row:1/3;position:relative;width:58px;height:58px}
+.ring svg{width:100%;height:100%;display:block}
+.ring circle{fill:none;stroke-width:6}
+.ring .rt{stroke:var(--track)}
+.ring .rv{stroke:var(--sun);stroke-linecap:round;transition:stroke-dashoffset .5s ease}
+.ring.full .rv{stroke:var(--done)}
+.ring span{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:.82rem;font-variant-numeric:tabular-nums}
+.head h1{font-size:1.6rem;align-self:end}
+.head .sub{grid-column:2/4;align-self:start;font-size:.9rem}
+.nav{align-self:end}
+.nav button{border:0;background:var(--surface);box-shadow:var(--shadow);min-width:38px;height:38px;border-radius:19px;display:grid;place-items:center;font-size:1.05rem}
+.nav button .ico{width:19px;height:19px}
+.nav #today{font-size:.82rem;padding:0 12px}
+.status{font-size:.8rem;min-height:1em}
+/* surfaces */
+.list,.panel,.banner,.timer,details,.empty{border-radius:var(--r);box-shadow:var(--shadow)}
+.list,.panel,.banner,.timer,details{border-color:transparent}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .list,:root:not([data-theme="light"]) .panel,:root:not([data-theme="light"]) .banner,:root:not([data-theme="light"]) .timer,:root:not([data-theme="light"]) details{border-color:var(--line)} }
+:root[data-theme="dark"] .list,:root[data-theme="dark"] .panel,:root[data-theme="dark"] .banner,:root[data-theme="dark"] .timer,:root[data-theme="dark"] details{border-color:var(--line)}
+.empty{box-shadow:none}
+.panel{padding:16px;gap:12px}
+.panel h2,.timer h2{font-size:1.02rem;font-weight:700;letter-spacing:-.01em}
+.box{border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);padding:18px}
+.sheet{background:rgba(10,16,22,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.focus{background:var(--bg)}
+/* controls */
+.btn{border-radius:14px;height:48px;transition:transform .12s ease,filter .12s ease}
+.btn:active{transform:scale(.97)}
+.btn:not(.quiet){box-shadow:0 6px 16px rgba(240,179,35,.32)}
+.btn.quiet{border-color:transparent;box-shadow:var(--shadow)}
+.box .btn.quiet,.panel .btn.quiet{box-shadow:none;border-color:var(--line)}
+input[type=text],input[type=time],input[type=number],select,textarea{border-radius:14px;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sun);box-shadow:0 0 0 3px rgba(240,179,35,.25)}
+.chip{background:var(--surface);font-weight:600;font-size:.85rem;padding:7px 14px;box-shadow:var(--shadow);border-color:transparent}
+.tag{letter-spacing:.05em}
+.check{width:28px;height:28px;border-width:2px;transition:background .15s,border-color .15s,transform .15s;background:var(--surface)}
+.check:active{transform:scale(.9)}
+.check[aria-checked=true]{animation:pop .28s ease}
+@keyframes pop{0%{transform:scale(.7)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+.x{border-radius:50%;opacity:.55}
+.x.sure{opacity:1;border-radius:10px}
+/* now card */
+.banner.nowcard{background:var(--soft);color:var(--soft-ink);border-color:transparent;gap:8px;padding:14px 16px}
+.nowcard strong{font-family:var(--display);font-size:1.12rem;letter-spacing:-.01em}
+.nowcard .meta{color:inherit;opacity:.8}
+.nowcard .fbar{background:rgba(120,90,0,.18);height:8px}
+.nowcard .fbar i{background:var(--sun)}
+.nowcard .nx{padding-top:8px;border-top:1px solid rgba(120,90,0,.18)}
+.nowcard .tag{background:var(--sun);color:var(--sun-ink)}
+.nowcard .tag.q{background:rgba(120,90,0,.16);color:inherit}
+.nowcard .chip{box-shadow:none;background:var(--surface);color:var(--ink)}
+/* day timeline */
+.tline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tline li{display:grid;grid-template-columns:46px 30px minmax(0,1fr);column-gap:8px;align-items:stretch}
+.tline .tm{text-align:right;padding-top:15px;font-size:.86rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1;color:var(--ink)}
+.tline .tm small{display:block;font-size:.62rem;font-weight:500;letter-spacing:.06em;color:var(--muted)}
+.tline .rail{position:relative;display:flex;justify-content:center;padding-top:11px}
+.tline .rail::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:var(--line)}
+.tline li:first-child .rail::before{top:14px}
+.tline li:last-child .rail::before{bottom:calc(100% - 26px)}
+.tline .rail .check{position:relative;z-index:1}
+.tline .card{display:flex;align-items:center;gap:6px;background:var(--surface);border-radius:16px;padding:10px 6px 10px 14px;margin:5px 0;box-shadow:var(--shadow);border:1.5px solid transparent;min-width:0}
+.tline .ttl{font-weight:600;line-height:1.3}
+.tline .meta{margin-top:1px}
+.tline li.run .card{border-color:var(--sun);background:var(--soft)}
+.tline li.run .tm{color:var(--soft-ink)}
+.tline li.run .check{border-color:var(--sun)}
+.tline li.late .tm{color:var(--danger)}
+.tline .warn{color:var(--danger);font-weight:600}
+.tline li.isdone .card{background:transparent;box-shadow:none;padding-block:6px}
+.tline li.isdone .tm{color:var(--muted);font-weight:500}
+.tline li.isdone .ttl{color:var(--muted);text-decoration:line-through;font-weight:500}
+.tline li.isdone .grow>div:first-child{text-decoration:line-through}
+/* lists elsewhere */
+.list li{padding:13px 14px}
+.week span{width:20px;height:20px;border-radius:6px}
+.cd{border-radius:12px}
+.kv li{padding-block:2px}
+.two>div{border-radius:14px;padding:12px}
+/* floating tab bar */
+.tabs{z-index:4;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));max-width:456px;margin:0 auto;padding:6px;border:0;border-radius:24px;background:var(--surface);box-shadow:0 2px 6px rgba(16,24,32,.10),0 14px 34px rgba(16,24,32,.16)}
+.tabs div{max-width:none;gap:4px}
+.tabs button{padding:7px 2px 6px;gap:1px;border-radius:18px;transition:background .18s,color .18s}
+.tabs button strong{font-size:.86rem;line-height:1.1}
+.tabs button span{font-size:.6rem;letter-spacing:.07em}
+.tabs button[aria-selected=true]{background:var(--sun);color:var(--sun-ink)}
+@media (prefers-reduced-motion:reduce){.check[aria-checked=true]{animation:none}.ring .rv,.btn,.check{transition:none}}
 </style>
 
 <div class="app">
   <header class="head">
+    <div class="ring" id="ring" role="img" aria-label="Tasks done today"><svg viewBox="0 0 56 56"><circle class="rt" cx="28" cy="28" r="23"/><circle class="rv" id="ring-arc" cx="28" cy="28" r="23" transform="rotate(-90 28 28)" stroke-dasharray="144.5" stroke-dashoffset="144.5"/></svg><span id="ring-num">0%</span></div>
     <h1 id="dow">Today</h1>
     <div class="nav">
-      <button id="cal-open">Calendar</button>
+      <button id="cal-open" aria-label="Calendar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></button>
       <button id="prev" aria-label="Previous day">‹</button>
       <button id="today" hidden>Today</button>
       <button id="next" aria-label="Next day">›</button>
@@ -352,10 +450,10 @@ textarea{resize:vertical;min-height:84px}
 </div>
 
 <nav class="tabs"><div role="tablist">
-  <button role="tab" data-tab="tasks"><strong id="c-tasks">0</strong><span>Tasks</span></button>
-  <button role="tab" data-tab="time"><strong id="c-time">0m</strong><span>Time</span></button>
-  <button role="tab" data-tab="habits"><strong id="c-habits">0</strong><span>Habits</span></button>
-  <button role="tab" data-tab="stats"><strong id="c-stats">–</strong><span>Analysis</span></button>
+  <button role="tab" data-tab="tasks"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5l1.8 1.8L9 5M4 12.5l1.8 1.8L9 11M4 18.5l1.8 1.8L9 17M12.5 6.5H20M12.5 12.5H20M12.5 18.5H20"/></svg><strong id="c-tasks">0</strong><span>Tasks</span></button>
+  <button role="tab" data-tab="time"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12.5" r="8"/><path d="M12 8v4.8l3 1.8M9.5 2.8h5"/></svg><strong id="c-time">0m</strong><span>Time</span></button>
+  <button role="tab" data-tab="habits"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3.5l3 3-3 3M20 6.5H8a4 4 0 0 0-4 4v1M7 20.5l-3-3 3-3M4 17.5h12a4 4 0 0 0 4-4v-1"/></svg><strong id="c-habits">0</strong><span>Habits</span></button>
+  <button role="tab" data-tab="stats"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20.5V10M10 20.5V4M16 20.5v-7M21.5 20.5H2.5"/></svg><strong id="c-stats">–</strong><span>Analysis</span></button>
 </div></nav>
 
 <script>
@@ -577,6 +675,7 @@ function render(){
   document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));
   const L=items(sel),done=L.filter(t=>t.done).length;
   $('c-tasks').textContent=L.length?done+'/'+L.length:'0';
+  {const cnt=L.filter(t=>!t.skip).length,r=cnt?done/cnt:0;$('ring-arc').setAttribute('stroke-dashoffset',(144.5*(1-r)).toFixed(1));$('ring-num').textContent=Math.round(r*100)+'%';$('ring').classList.toggle('full',cnt>0&&r>=T());}
   $('c-time').textContent=fmtDur(loggedMs(sel));
   const H=activeH(),hd=H.filter(h=>hDone(D,h)).length;
   $('c-habits').textContent=H.length?hd+'/'+H.length:'0';
@@ -605,11 +704,11 @@ function nextUp(){
   if(sel!==todayKey()||peek(sel).off)return '';
   const now=Date.now(),L=items(sel).filter(t=>t.from&&t.to&&!closed(t)).sort(byTime);
   const cur=L.find(t=>atTime(sel,t.from)<=now&&now<atTime(sel,t.to)),nx=L.find(t=>atTime(sel,t.from)>now);
-  return (cur?'<div class="row"><div><span class="tag">Now</span> <strong>'+esc(cur.text)+'</strong> · '+fmtDur(atTime(sel,cur.to)-now)+' left</div><button class="chip" data-act="focus">Focus</button></div>':'')
-    +(nx?'<div><span class="tag q">Next</span> '+esc(nx.text)+' at '+fmtHM(nx.from)+' · in '+fmtDur(atTime(sel,nx.from)-now)+'</div>':'');
+  return (cur?'<div class="row"><div><span class="tag">Now</span> <strong>'+esc(cur.text)+'</strong></div><button class="chip" data-act="focus">Focus</button></div><div class="fbar"><i style="width:'+Math.max(2,Math.min(100,(now-atTime(sel,cur.from))/(atTime(sel,cur.to)-atTime(sel,cur.from))*100)).toFixed(0)+'%"></i></div><div class="meta">'+fmtDur(atTime(sel,cur.to)-now)+' left · until '+fmtHM(cur.to)+'</div>':'')
+    +(nx?'<div class="nx"><span class="tag q">Next</span> '+esc(nx.text)+' <span class="meta">at '+fmtHM(nx.from)+' · in '+fmtDur(atTime(sel,nx.from)-now)+'</span></div>':'');
 }
 function paintNext(){
-  const h=nextUp();$('nextup').hidden=!h;$('nextup').innerHTML=h;
+  const h=nextUp();$('nextup').hidden=!h;$('nextup').innerHTML=h;$('nextup').classList.add('nowcard');
   let b='';
   if(IS_APP&&ready&&Object.keys(S.days).length){
     let first=0,last=0;try{first=+localStorage.getItem(LS+'.first')||0;last=+localStorage.getItem(LS+'.bk')||0;if(!first){first=Date.now();localStorage.setItem(LS+'.first',first);}}catch(e){}
@@ -629,12 +728,16 @@ function renderTasks(D,isToday,L){
   if(!L.length)h+='<div class="empty">Nothing planned for this day yet. Tap Add a task to plan the first thing you want to get done.</div>';
   else{
     const sorted=L.filter(t=>!closed(t)).sort(byTime).concat(L.filter(closed).sort(byTime));
-    h+='<ul class="list">'+sorted.map(t=>{
-      const cls=t.done?'':t.skip?' skip':t.miss?' miss':'',mark=t.done?'✓':t.skip?'–':t.miss?'✕':'';
-      return '<li class="'+(closed(t)?'isdone':'')+'"><button class="check'+cls+'" role="checkbox" aria-checked="'+!!t.done+'" data-act="task" data-id="'+t.id+'" aria-label="'+(closed(t)?'Clear':'Mark')+' '+esc(t.text)+'">'+mark+'</button>'
-        +'<div class="grow" role="button" tabindex="0" data-act="edit" data-id="'+t.id+'" aria-label="Edit '+esc(t.text)+'"><div>'+dot(t.color)+esc(t.text)+(t.w>1?' <span class="tag imp">Important</span>':'')+'</div>'
-        +(t.from&&t.to?'<div class="meta">'+fmtHM(t.from)+' to '+fmtHM(t.to)+' · '+fmtDur((mins(t.to)-mins(t.from))*60000)+'</div>':'')
-        +(t.note?'<div class="meta">'+esc(t.note)+'</div>':'')+tookLine(t)+'</div>'+delBtn(t.rep?'delplan':'deltask',t.id)+'</li>';
+    const nowMs=Date.now(),tparts=t=>{const p=t.split(':'),hh=+p[0];return [((hh+11)%12+1)+':'+p[1],hh<12?'AM':'PM'];};
+    h+='<ul class="tline">'+sorted.map(t=>{
+      const cls=t.done?'':t.skip?' skip':t.miss?' miss':'',mark=t.done?'✓':t.skip?'–':t.miss?'✕':'',fin=closed(t);
+      const run=isToday&&!fin&&t.from&&t.to&&atTime(sel,t.from)<=nowMs&&nowMs<atTime(sel,t.to),late=isToday&&!fin&&(t.to||t.from)&&atTime(sel,t.to||t.from)<=nowMs;
+      const tp=t.from?tparts(t.from):null;
+      return '<li class="'+(fin?'isdone':'')+(run?' run':'')+(late?' late':'')+'"><div class="tm">'+(tp?tp[0]+'<small>'+tp[1]+'</small>':'<small>any time</small>')+'</div>'
+        +'<div class="rail"><button class="check'+cls+'" role="checkbox" aria-checked="'+!!t.done+'" data-act="task" data-id="'+t.id+'" aria-label="'+(fin?'Clear':'Mark')+' '+esc(t.text)+'">'+mark+'</button></div>'
+        +'<div class="card"><div class="grow" role="button" tabindex="0" data-act="edit" data-id="'+t.id+'" aria-label="Edit '+esc(t.text)+'"><div class="ttl">'+dot(t.color)+esc(t.text)+(run?' <span class="tag">Now</span>':'')+(t.w>1?' <span class="tag imp">Important</span>':'')+'</div>'
+        +(t.from&&t.to?'<div class="meta">until '+fmtHM(t.to)+' · '+fmtDur((mins(t.to)-mins(t.from))*60000)+(late&&!run?' · <span class="warn">not marked</span>':'')+'</div>':'')
+        +(t.note?'<div class="meta">'+esc(t.note)+'</div>':'')+tookLine(t)+'</div>'+delBtn(t.rep?'delplan':'deltask',t.id)+'</div></li>';
     }).join('')+'</ul>';
   }
   $('tasks').innerHTML='<div style="display:flex;flex-direction:column;gap:12px">'+h+'</div>';
