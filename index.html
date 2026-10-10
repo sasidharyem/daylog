@@ -219,6 +219,15 @@ textarea{resize:vertical;min-height:84px}
     <div style="display:flex;flex-direction:column;gap:16px">
       <label class="fld">Show the pattern for<select id="an-item"></select></label>
       <div id="an-body" style="display:flex;flex-direction:column;gap:20px"></div>
+      <div class="panel" id="rem-wrap" hidden>
+        <h2>Reminders</h2>
+        <div class="meta" id="rem-status">Reminders are off.</div>
+        <label class="fld">Reminder server address<input type="text" id="rem-url" placeholder="https://daylog-push.yourname.workers.dev" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url"></label>
+        <label class="fld">Minutes before the start time<input type="number" id="rem-lead" min="0" max="60" step="1" inputmode="numeric" placeholder="0"></label>
+        <button class="btn wide" id="rem-on">Turn on reminders</button>
+        <button class="btn quiet wide" id="rem-test" hidden>Send a test reminder</button>
+        <button class="btn quiet wide" id="rem-off" hidden>Turn off reminders</button>
+      </div>
       <div class="panel">
         <h2>Settings</h2>
         <label class="fld">Target percentage<input type="number" id="target-in" min="1" max="100" step="1" inputmode="numeric"></label>
@@ -297,6 +306,7 @@ textarea{resize:vertical;min-height:84px}
 (function(){
 const $=id=>document.getElementById(id);
 const LS='daylog.v1';
+const IS_APP=!(window.claude&&window.claude.use); /* true in the installed app, false inside the Claude viewer */
 const START='2026-10-10'; /* the day tracking began */
 const WAKE_T='05:45',SLEEP_T='21:45';
 const cfg=c=>({habits:Array.isArray(c&&c.habits)?c.habits:[],timer:(c&&c.timer)||null,schedule:Array.isArray(c&&c.schedule)?c.schedule:[],custom:!!(c&&c.custom),
@@ -364,6 +374,7 @@ function weekStart(k){return shift(k,-((parse(k).getDay()+6)%7));}
 /* ---------- saving ---------- */
 const q={};
 function save(id){
+  queueSync();
   if(!col){try{localStorage.setItem(LS,JSON.stringify(S));}catch(e){setStatus("This browser is blocking storage, so changes won't be kept.");}return;}
   const s=q[id]||(q[id]={});
   if(s.busy){s.dirty=true;return;}
@@ -386,7 +397,7 @@ function loadLocal(){
   try{const d=JSON.parse(localStorage.getItem(LS)||'null');
     if(d){S.config=cfg(d.config);
       Object.keys(d.days||{}).forEach(k=>S.days[k]=norm(d.days[k]));}}catch(e){}
-  ready=true;setStatus('Saved on this device only.');render();
+  ready=true;setStatus('Saved on this device only.');render();queueSync();
 }
 async function boot(){
   let db=null,id=null;
@@ -775,6 +786,79 @@ function buildCsv(){
   return rows.map(r=>{while(r.length<10)r.push('');return r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',');}).join('\r\n');
 }
 
+/* ---------- reminders (installed app only) ----------
+   A small server nudges the phone at each start time. It is only told clock times; the task names
+   stay on the phone, in a file the app's service worker reads when a nudge arrives. */
+const RKEY=LS+'.push';
+function rget(){try{return JSON.parse(localStorage.getItem(RKEY)||'{}')||{};}catch(e){return {};}}
+function rput(o){try{localStorage.setItem(RKEY,JSON.stringify(o));}catch(e){}}
+const leadOf=t=>{const m=(mins(t)-(rget().lead||0)+1440)%1440;return pad(Math.floor(m/60))+':'+pad(m%60);};
+const uniq=a=>a.filter((x,i)=>a.indexOf(x)===i);
+function reminderPlan(){
+  const tk=todayKey(),days={},dates={},times={};
+  for(let i=0;i<8;i++){
+    const k=shift(tk,i),L=peek(k).off?[]:items(k).filter(t=>t.from);
+    days[k]=L.map(t=>({id:t.id,text:t.text,from:t.from,to:t.to||'',closed:closed(t)}));
+    dates[k]=uniq(L.filter(t=>!closed(t)).map(t=>leadOf(t.from)));
+  }
+  ALLD.forEach(w=>{times[w]=uniq(blocksFor(w).filter(b=>b.from).map(b=>leadOf(b.from)));});
+  return {local:{lead:rget().lead||0,days:days},server:{times:times,dates:dates}};
+}
+let syncT=null;
+function queueSync(){
+  if(!IS_APP||!ready)return;
+  clearTimeout(syncT);syncT=setTimeout(syncReminders,4000);
+}
+async function syncReminders(){
+  const r=rget(),plan=reminderPlan();
+  try{const c=await caches.open('daylog-data');await c.put('reminders.json',new Response(JSON.stringify(plan.local),{headers:{'Content-Type':'application/json'}}));}catch(e){}
+  if(!r.on||!r.url||!r.sub)return;
+  const body=JSON.stringify(Object.assign({sub:r.sub,tz:Intl.DateTimeFormat().resolvedOptions().timeZone},plan.server));
+  if(body===syncReminders.last)return;
+  try{const res=await fetch(r.url+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:body});if(res.ok)syncReminders.last=body;}catch(e){}
+}
+function paintReminders(){
+  if(!IS_APP)return;
+  const r=rget(),u=$('rem-url'),l=$('rem-lead');
+  $('rem-wrap').hidden=false;
+  if(document.activeElement!==u)u.value=r.url||'';
+  if(document.activeElement!==l)l.value=r.lead||'';
+  $('rem-on').hidden=!!r.on;$('rem-test').hidden=$('rem-off').hidden=!r.on;
+  if(!$('rem-status').dataset.msg)$('rem-status').textContent=r.on?'Reminders are on for every task that has a start time.':'Reminders are off.';
+}
+function remMsg(t){const e=$('rem-status');e.dataset.msg=t?'1':'';e.textContent=t;if(!t)paintReminders();}
+const keyBytes=k=>Uint8Array.from(atob(k.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+async function remOn(){
+  const url=$('rem-url').value.trim().replace(/\/+$/,'');
+  if(!/^https:\/\/[^\s/]+$/.test(url)){remMsg('Enter the reminder server address first. It starts with https:// and ends with workers.dev.');return;}
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){remMsg('This browser cannot receive reminders. Open Daylog from the installed app in Chrome.');return;}
+  remMsg('Turning on…');
+  try{
+    if(await Notification.requestPermission()!=='granted'){remMsg('Notifications are blocked for Daylog. Allow them in the phone settings for this app, then try again.');return;}
+    const reg=await navigator.serviceWorker.ready;
+    let key;try{key=(await (await fetch(url+'/vapid')).json()).key;}catch(e){}
+    if(!key){remMsg('Could not reach the reminder server. Check the address and that the server is set up.');return;}
+    const old=await reg.pushManager.getSubscription();if(old)await old.unsubscribe();
+    const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:keyBytes(key)});
+    rput(Object.assign(rget(),{on:true,url:url,sub:sub.toJSON()}));
+    syncReminders.last=null;await syncReminders();
+    remMsg(syncReminders.last?'':'Reminders are set on this phone, but the server did not accept the schedule. Tap Send a test reminder to check.');
+    paintReminders();
+  }catch(e){remMsg('Could not turn on reminders: '+(e&&e.message?e.message:'unknown error')+'.');}
+}
+async function remOff(){
+  const r=rget();
+  try{if(r.url&&r.sub)await fetch(r.url+'/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:r.sub.endpoint})});}catch(e){}
+  try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe();}catch(e){}
+  rput({url:r.url,lead:r.lead,on:false});syncReminders.last=null;remMsg('');
+}
+async function remTest(){
+  const r=rget();remMsg('Sending…');
+  try{const res=await fetch(r.url+'/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:r.sub.endpoint})}),d=await res.json();
+    remMsg(d&&d.ok?'Test sent. A Daylog notification should appear within a few seconds.':'The server could not send the test (code '+((d&&d.status)||res.status)+'). Turn reminders off and on again.');}
+  catch(e){remMsg('Could not reach the reminder server.');}
+}
+
 /* ---------- actions ---------- */
 function addHabit(name,goal){const h={id:uid(),name:name};if(goal>1)h.goal=Math.min(99,Math.round(goal));S.config.habits.push(h);save('config');}
 function confirmDel(act,id){if(armed===act+id){armed=null;return true;}armed=act+id;render();return false;}
@@ -913,8 +997,9 @@ $('an-item').onchange=()=>{anItem=$('an-item').value;render();};
 $('target-in').onchange=()=>{if(!ready)return;const v=Math.round(+$('target-in').value);if(v>=1&&v<=100){S.config.target=v;save('config');}render();};
 $('quick-in').onchange=()=>{if(!ready)return;S.config.quick=$('quick-in').checked;save('config');};
 /* Files: through the Claude viewer when it offers downloads, otherwise a normal browser download (the installed app). */
-const standalone=!(window.claude&&window.claude.use);
-if(standalone)['export-btn','backup-btn','restore-btn'].forEach(i=>{$(i).hidden=false;});
+if(IS_APP){['export-btn','backup-btn','restore-btn'].forEach(i=>{$(i).hidden=false;});paintReminders();}
+$('rem-on').onclick=remOn;$('rem-off').onclick=remOff;$('rem-test').onclick=remTest;
+$('rem-lead').onchange=()=>{const v=Math.max(0,Math.min(60,Math.round(+$('rem-lead').value||0)));rput(Object.assign(rget(),{lead:v}));syncReminders.last=null;queueSync();paintReminders();};
 async function saveFile(name,data,mime){
   if(downloads){
     try{await downloads.save({filename:name,data:data});setStatus('Saved.');}
