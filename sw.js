@@ -8,7 +8,7 @@ self.addEventListener('push',e=>e.waitUntil((async()=>{
   const now=new Date(),pad=n=>String(n).padStart(2,'0'),k=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate()),nm=now.getHours()*60+now.getMinutes();
   const lead=(d&&d.lead)||0,list=((d&&d.days&&d.days[k])||[]).filter(t=>{if(t.closed)return false;const p=t.from.split(':'),m=+p[0]*60+ +p[1]-lead;return nm>=m-1&&nm<=m+4;});
   const fmt=t=>{const p=t.split(':'),h=+p[0];return ((h+11)%12+1)+':'+p[1]+(h<12?' AM':' PM');};
-  const opt={icon:'icon-192.png',badge:'icon-192.png'};
+  const opt={icon:'icon-192.png',badge:'icon-192.png',vibrate:[300,150,300,150,300],renotify:true,silent:false};
   if(!list.length)return self.registration.showNotification('Daylog',Object.assign({body:'Time to check your schedule.',tag:'daylog-generic'},opt));
   await Promise.all(list.map(t=>self.registration.showNotification(t.text,Object.assign({body:(lead?'Starts at ':'')+fmt(t.from)+(t.to?' to '+fmt(t.to):''),tag:'daylog-'+k+'-'+t.id},opt))));
 })()));
