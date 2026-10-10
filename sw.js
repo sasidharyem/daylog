@@ -11,7 +11,12 @@ self.addEventListener('push',e=>e.waitUntil((async()=>{
   const RING=[];for(let i=0;i<16;i++)RING.push(900,400); /* about 20 seconds of long buzzes, like an incoming call */
   const opt={icon:'icon-192.png',badge:'icon-192.png',vibrate:RING,renotify:true,silent:false,requireInteraction:true};
   if(!list.length)return self.registration.showNotification('Daylog',Object.assign({body:'Time to check your schedule.',tag:'daylog-generic'},opt));
-  await Promise.all(list.map(t=>self.registration.showNotification(t.text,Object.assign({body:(lead?'Starts at ':'')+fmt(t.from)+(t.to?' to '+fmt(t.to):''),tag:'daylog-'+k+'-'+t.id},opt))));
+  /* Same "Now" and "Next" lines as the banner at the top of the task list. */
+  const mm=t=>{const p=t.split(':');return +p[0]*60+ +p[1];},dur=m=>m>=60?Math.floor(m/60)+'h '+pad(m%60)+'m':m+'m';
+  const open=((d.days[k])||[]).filter(t=>!t.closed&&t.to).sort((a,b)=>a.from<b.from?-1:1);
+  const cur=open.find(t=>mm(t.from)<=nm&&nm<mm(t.to)),nx=open.find(t=>mm(t.from)>nm);
+  const body=[cur?'Now: '+cur.text+' · '+dur(mm(cur.to)-nm)+' left':'',nx?'Next: '+nx.text+' at '+fmt(nx.from)+' · in '+dur(mm(nx.from)-nm):''].filter(Boolean).join(String.fromCharCode(10));
+  await Promise.all(list.map(t=>self.registration.showNotification(mm(t.from)>nm?t.text+' starts at '+fmt(t.from):t.text+(t.to?' until '+fmt(t.to):''),Object.assign({body:body||fmt(t.from)+(t.to?' to '+fmt(t.to):''),tag:'daylog-'+k+'-'+t.id},opt))));
 })()));
 self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(cs=>{for(const c of cs)if('focus' in c)return c.focus();return self.clients.openWindow('./');}));});
 self.addEventListener('fetch',e=>{
